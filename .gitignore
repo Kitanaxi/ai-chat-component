@@ -38,9 +38,10 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Por agora, manter no Git apenas o componente de chat e este ficheiro.
+# Por agora, manter no Git o componente, a documentação e este ficheiro.
 /*
 !/.gitignore
+!/README.md
 !/components/
 /components/*
 !/components/chat-ia/

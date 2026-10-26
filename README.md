@@ -1,0 +1,178 @@
+# ChatIA
+
+`ChatIA` é um componente React de chat que se integra ao conteúdo da aplicação. Mostra uma janela lateral ou flutuante, sugestões para iniciar uma conversa, histórico local e um campo de entrada com seletor de modelo.
+
+O componente é código do projeto, não um serviço de IA. Sem `onSubmit`, usa uma resposta de demonstração; para conversar com um modelo real, a aplicação precisa fornecer a ligação ao seu próprio servidor.
+
+## De onde vêm os elementos
+
+- **Campo de entrada e seletor de modelo:** [AI Input Selector, Kokonut UI](https://kokonutui.com/docs/ai/ai-prompt).
+- **Fundo animado de pontos:** [DotGrid, React Bits](https://reactbits.dev/r/DotGrid-JS-CSS.json).
+- **Botões, menus, tema e utilitários:** [shadcn/ui](https://ui.shadcn.com/), com estilos de [Tailwind CSS](https://tailwindcss.com/).
+- **Ícones e animações:** `lucide-react` e `motion`, usados pelo input e pela interface.
+
+O `ChatIA` reúne essas peças e acrescenta o painel, as sugestões, o estado das conversas e a personalização visual.
+
+## Requisitos
+
+- React e uma aplicação cliente.
+- Tailwind CSS e shadcn/ui configurados no projeto.
+- Os aliases usados pelo código: `@/components`, `@/hooks` e `@/lib`.
+- `components.json` configurado para os registos Kokonut UI e React Bits.
+- Para o tema claro/escuro, um `ThemeProvider` compatível com `next-themes`.
+
+O projeto atual usa Next.js 16, React 19 e Tailwind CSS 4. O componente usa `"use client"`, `localStorage`, `next-themes` e `next/image`.
+
+## Instalação das peças
+
+Inicializa shadcn/ui no projeto, se ainda não estiver configurado. Em `components.json`, mantém os aliases existentes e adiciona estes registos:
+
+```json
+{
+  "registries": {
+    "@kokonutui": "https://kokonutui.com/r/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json"
+  }
+}
+```
+
+Executa os comandos a partir da raiz do projeto:
+
+```bash
+npx shadcn@latest add @react-bits/DotGrid-JS-CSS
+npx shadcn@latest add @kokonutui/ai-prompt
+npx shadcn@latest add button
+```
+
+O comando do Kokonut UI também instala os componentes shadcn que o input usa, como `dropdown-menu` e `textarea`. O `button` é usado diretamente pelo `ChatIA`. Se algum arquivo ou pacote já existir, conserva a implementação atual e instala apenas o que estiver em falta.
+
+O comando React Bits instala o DotGrid em JavaScript com CSS. A estrutura local esperada inclui:
+
+```text
+components/
+  chat-ia/chat-ia.tsx
+  DotGrid.jsx
+  DotGrid.css
+  kokonutui/ai-prompt.tsx
+  ui/button.tsx
+  ui/dropdown-menu.tsx
+  ui/textarea.tsx
+hooks/use-auto-resize-textarea.ts
+lib/utils.ts
+```
+
+As rotas dos registos são namespaced em `components.json`; o CLI shadcn usa essa configuração para descobrir cada componente. Consulta também a [instalação do Kokonut UI](https://kokonutui.com/docs) e a [instalação do React Bits](https://reactbits.dev/get-started/installation).
+
+## Uso em Next.js
+
+Importa `ChatIA` e coloca-o no layout raiz, envolvendo `{children}`. O `ThemeProvider` deve estar acima do componente para que a escolha de logo e cores acompanhe o tema:
+
+```tsx
+import { ChatIA } from "@/components/chat-ia/chat-ia";
+import { ThemeProvider } from "@/components/theme-provider";
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="pt" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>
+          <ChatIA
+            logoIa="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/google-gemini.svg"
+            logoIaDark="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/google-gemini.svg"
+            logoIaSize={70}
+            name="Assistente"
+            color="#F2A900"
+            borderColor="var(--border)"
+            floating={false}
+            floatingMargin={5}
+            floatingRadius={24}
+            floatingShadow={false}
+            floatingMarginLeft={15}
+          >
+            {children}
+          </ChatIA>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+`children` é o conteúdo normal do site. Com `floating={false}`, o chat abre como painel lateral e reduz a largura do conteúdo enquanto está aberto. Com `floating`, abre como painel flutuante sobre a página.
+
+## Propriedades
+
+| Propriedade | Para que serve |
+| --- | --- |
+| `children` | Conteúdo da aplicação mostrado junto ao chat. Obrigatório. |
+| `name` | Nome apresentado no cabeçalho e no seletor de conversas. Predefinição: `Chat IA`. |
+| `logoIa`, `logoIaDark` | Logo para os temas claro e escuro; aceitam URL ou import estático do Next.js. |
+| `logoIaSize` | Largura e altura do logo em píxeis. Predefinição: `56`. |
+| `color` | Cor de destaque inicial. |
+| `activeColor` | Substitui `color` como cor de destaque. |
+| `borderColor` | Cor das bordas do painel e das mensagens. |
+| `floating` | Abre um painel flutuante; por omissão é `false`. |
+| `floatingMargin` | Margem padrão do painel flutuante; por omissão `16`. |
+| `floatingMarginTop`, `floatingMarginRight`, `floatingMarginBottom`, `floatingMarginLeft` | Sobrescrevem individualmente as margens flutuantes. Aceitam número em píxeis ou valor CSS. |
+| `floatingRadius` | Raio dos cantos do painel flutuante; por omissão `24`. |
+| `floatingShadow` | Mostra sombra no painel flutuante; por omissão `true`. |
+| `placeholder` | Texto do campo de entrada; por omissão `Escreve uma pergunta...`. |
+| `models` | Modelos e níveis de esforço apresentados pelo input. |
+| `defaultModel` | Modelo inicialmente selecionado. Por omissão: `Gemini Pro`. |
+| `onSubmit` | Recebe o texto, o modelo e opções como `effort`, `signal` e `command` para a aplicação fazer a chamada ao seu serviço. |
+| `onStop` | Callback opcional quando o utilizador interrompe uma resposta. |
+
+Exemplo de configuração de modelos:
+
+```tsx
+const models = [
+  {
+    name: "Gemini Pro",
+    description: "Modelo avançado para tarefas complexas",
+    efforts: ["Low", "Medium", "High"],
+    defaultEffort: "Medium",
+  },
+  {
+    name: "Gemini Flash",
+    description: "Modelo rápido para tarefas do dia a dia",
+    efforts: ["Low", "Medium"],
+    defaultEffort: "Medium",
+  },
+];
+
+function ChatLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ChatIA models={models} defaultModel="Gemini Pro">
+      {children}
+    </ChatIA>
+  );
+}
+```
+
+## Conversas e ligação à IA
+
+As conversas são guardadas em `localStorage` no navegador, na chave `chat-ia-conversations-v1`. O utilizador pode iniciar, selecionar, limpar e eliminar conversas. Esses dados ficam no navegador atual; o componente não os sincroniza com um servidor.
+
+Sem `onSubmit`, o componente simula uma resposta de teste depois de enviar uma mensagem. Com `onSubmit`, recebe o texto, o nome do modelo e opções, incluindo `signal` para cancelamento. Usa esse callback para chamar uma rota do teu servidor e manter as chaves do fornecedor no servidor, nunca no código do browser.
+
+**Limitação da versão atual:** quando `onSubmit` está definido, o `ChatIA` guarda a mensagem do utilizador, mas não acrescenta automaticamente a resposta devolvida pelo callback ao histórico visível. A resposta automática visível existe apenas no modo de demonstração. A integração com respostas reais requer completar esse comportamento no componente.
+
+## Compatibilidade
+
+| Ambiente | Compatibilidade |
+| --- | --- |
+| React | É um componente React cliente; depende dos componentes e dos aliases descritos acima. |
+| Next.js | Integração direta no App Router, dentro de um `ThemeProvider`. |
+| Vite | Requer configurar o alias `@` e Tailwind/shadcn. Esta cópia importa `next/image`; para usar em Vite, substitui essa importação por uma imagem HTML (`img`) ou por um adaptador compatível. Não foi validada uma build Vite neste repositório. |
+
+Para iniciar um projeto Vite com shadcn/ui, consulta a [guia oficial do shadcn para Vite](https://ui.shadcn.com/docs/installation/vite). Os componentes Kokonut UI e React Bits são adicionados como código React e Tailwind pelo CLI shadcn.
+
+## Referências
+
+- [AI Input Selector — Kokonut UI](https://kokonutui.com/docs/ai/ai-prompt)
+- [DotGrid — registo React Bits](https://reactbits.dev/r/DotGrid-JS-CSS.json)
+- [Instalação React Bits](https://reactbits.dev/get-started/installation)
+- [shadcn/ui — registos namespaced](https://ui.shadcn.com/docs/registry/namespace)
+- [shadcn/ui — Vite](https://ui.shadcn.com/docs/installation/vite)
