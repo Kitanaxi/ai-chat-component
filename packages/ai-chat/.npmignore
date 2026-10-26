@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+.env*
+.npmrc
+tests/
+src/
+scripts/
+tsconfig.json
+vitest.config.ts
+package-lock.json
