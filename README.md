@@ -1,4 +1,4 @@
-<img src="./components/chat-ia/imgWebChat.png" width="100%" />
+<img src="./components/chat-ia/imgWebChat.png" width="100%" title="ChatIA Component"/>
 
 ## Prompt para copiar e colar no teu agente de programação
 
