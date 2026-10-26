@@ -1,3 +1,20 @@
+## Prompt para copiar e colar no teu agente de programação
+
+Copia o bloco abaixo e cola-o no teu agente de programação com o projeto aberto:
+
+```text
+Analyze this project and make the ChatIA component ready to use. Use this README as a guide, adapting the steps to the project's structure and installed versions.
+
+1. Before editing files, identify the framework, React version, Tailwind CSS setup, shadcn/ui configuration, aliases, existing components, and ThemeProvider. Preserve local changes and avoid refactoring unrelated parts of the application.
+2. Configure the @react-bits and @kokonutui registries in components.json as described in this README, preserving the existing settings.
+3. Install only missing pieces: DotGrid with `npx shadcn@latest add @react-bits/DotGrid-JS-CSS`, AI Input Selector with `npx shadcn@latest add @kokonutui/ai-prompt`, and the required shadcn button. Do not duplicate existing files or dependencies.
+4. Integrate ChatIA at the appropriate entry point, wrapping the application content and keeping the ThemeProvider above it. Use the example and props in this README as a reference.
+5. If the project uses Vite, configure the `@` alias and replace the `next/image` import with an image implementation that works in Vite. Do not add Next.js just to resolve that import. If the project uses Next.js, respect its client/server boundaries.
+6. Do not invent a provider, endpoint, credentials, or real responses. Keep demo mode when no service is configured. If an endpoint already exists, connect through the server, protect credentials, and verify how assistant responses appear in the conversation history.
+7. Run checks appropriate for the project, fix issues caused by the integration, and leave unrelated files unchanged.
+8. Summarize the changed files, how to open and use the chat, the checks performed, and any AI service configuration that is still needed. Do not commit or push.
+```
+
 # ChatIA
 
 `ChatIA` é um componente React de chat que se integra ao conteúdo da aplicação. Mostra uma janela lateral ou flutuante, sugestões para iniciar uma conversa, histórico local e um campo de entrada com seletor de modelo.
