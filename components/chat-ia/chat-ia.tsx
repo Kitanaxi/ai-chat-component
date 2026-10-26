@@ -1,6 +1,9 @@
 "use client";
 
 import AI_Prompt from "@/components/kokonutui/ai-prompt";
+import AILoadingState, {
+  type AgentStep,
+} from "@/components/kokonutui/ai-loading";
 import DotGrid from "@/components/DotGrid";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,13 +15,12 @@ import {
   ChevronRight,
   Lightbulb,
   Maximize2,
-  MessageSquare,
   Minimize2,
   Sparkles,
   X,
 } from "lucide-react";
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +54,9 @@ type StoredChatState = {
 const CHAT_STORAGE_KEY = "chat-ia-conversations-v1";
 const NEW_CONVERSATION_TITLE = "Nova conversa";
 const EMPTY_MESSAGES: ChatMessage[] = [];
+const RESPONSE_LOADING_STEPS: AgentStep[] = [
+  { id: "response", label: "A preparar resposta", status: "running" },
+];
 
 function createConversation(): ChatConversation {
   return {
@@ -151,6 +156,39 @@ export interface ChatIAProps {
   placeholder?: PromptProps["placeholder"];
 }
 
+interface ChatIAContextValue {
+  isOpen: boolean;
+  openChat: () => void;
+}
+
+const ChatIAContext = createContext<ChatIAContextValue | null>(null);
+
+export interface ChatIAButtonProps {
+  className?: string;
+}
+
+export function ChatIAButton({ className }: ChatIAButtonProps) {
+  const chat = useContext(ChatIAContext);
+
+  if (!chat) {
+    throw new Error("ChatIAButton must be rendered inside ChatIA.");
+  }
+
+  return (
+    <Button
+      aria-controls="chat-ia-panel"
+      aria-expanded={chat.isOpen}
+      className={cn("gap-2 !bg-transparent", className)}
+      onClick={chat.openChat}
+      type="button"
+      variant="ghost"
+    >
+      <Sparkles aria-hidden="true" />
+      <span>Perguntar à IA</span>
+    </Button>
+  );
+}
+
 const DEFAULT_MODELS: NonNullable<PromptProps["models"]> = [
   {
     name: "Gemini Pro",
@@ -219,6 +257,9 @@ export function ChatIA({
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
     null
   );
+  const [pendingResponses, setPendingResponses] = useState<
+    Record<string, number>
+  >({});
   const [isStorageReady, setIsStorageReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
@@ -228,6 +269,9 @@ export function ChatIA({
     (conversation) => conversation.id === activeConversationId
   );
   const messages = activeConversation?.messages ?? EMPTY_MESSAGES;
+  const isActiveConversationLoading = activeConversationId
+    ? (pendingResponses[activeConversationId] ?? 0) > 0
+    : false;
   const baseColor = resolvedTheme === "dark" ? "#494058" : "#a4a4a4";
   const resolvedAccentColor =
     activeColor ?? color ?? (resolvedTheme === "dark" ? "#ffffff" : "#000000");
@@ -461,36 +505,67 @@ export function ChatIA({
     const conversationId =
       existingConversationId ?? ensureActiveConversationId();
 
-    const userMessage: ChatMessage = {
-      id: ++messageIdRef.current,
-      role: "user",
-      text,
-    };
-    appendMessageToConversation(conversationId, userMessage);
+    setPendingResponses((currentResponses) => ({
+      ...currentResponses,
+      [conversationId]: (currentResponses[conversationId] ?? 0) + 1,
+    }));
 
-    if (onSubmit) {
-      return onSubmit(text, model, options);
-    }
-
-    await new Promise<void>((resolve) => {
-      const timeoutId = window.setTimeout(resolve, 650);
-      options.signal.addEventListener(
-        "abort",
-        () => {
-          window.clearTimeout(timeoutId);
-          resolve();
-        },
-        { once: true }
-      );
-    });
-
-    if (!options.signal.aborted) {
-      const assistantMessage: ChatMessage = {
+    try {
+      const userMessage: ChatMessage = {
         id: ++messageIdRef.current,
-        role: "assistant",
-        text: "Resposta de teste: a tua mensagem apareceu no histórico da conversa.",
+        role: "user",
+        text,
       };
-      appendMessageToConversation(conversationId, assistantMessage);
+      appendMessageToConversation(conversationId, userMessage);
+
+      if (onSubmit) {
+        const response = await onSubmit(text, model, options);
+        if (
+          !options.signal.aborted &&
+          typeof response === "string" &&
+          response.trim()
+        ) {
+          const assistantMessage: ChatMessage = {
+            id: ++messageIdRef.current,
+            role: "assistant",
+            text: response,
+          };
+          appendMessageToConversation(conversationId, assistantMessage);
+        }
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        const timeoutId = window.setTimeout(resolve, 650);
+        options.signal.addEventListener(
+          "abort",
+          () => {
+            window.clearTimeout(timeoutId);
+            resolve();
+          },
+          { once: true }
+        );
+      });
+
+      if (!options.signal.aborted) {
+        const assistantMessage: ChatMessage = {
+          id: ++messageIdRef.current,
+          role: "assistant",
+          text: "Resposta de teste: a tua mensagem apareceu no histórico da conversa.",
+        };
+        appendMessageToConversation(conversationId, assistantMessage);
+      }
+    } finally {
+      setPendingResponses((currentResponses) => {
+        const remainingCount = (currentResponses[conversationId] ?? 1) - 1;
+        if (remainingCount > 0) {
+          return { ...currentResponses, [conversationId]: remainingCount };
+        }
+
+        const remainingResponses = { ...currentResponses };
+        delete remainingResponses[conversationId];
+        return remainingResponses;
+      });
     }
   };
 
@@ -522,31 +597,19 @@ export function ChatIA({
 
   return (
     <div className="relative min-h-svh overflow-x-clip" style={chatStyle}>
-      <motion.div
-        animate={{
-          width: isOpen && !isPanelExpanded ? "calc(100% - 400px)" : "100%",
-        }}
-        className="min-h-svh"
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      <ChatIAContext.Provider
+        value={{ isOpen, openChat: () => setIsOpen(true) }}
       >
-        {children}
-      </motion.div>
-
-      <Button
-        aria-controls="chat-ia-panel"
-        aria-expanded={isOpen}
-        aria-hidden={isOpen}
-        className={cn(
-          "fixed top-4 left-4 z-30 transition-opacity",
-          isOpen && "pointer-events-none opacity-0"
-        )}
-        onClick={() => setIsOpen(true)}
-        tabIndex={isOpen ? -1 : 0}
-        type="button"
-      >
-        <MessageSquare aria-hidden="true" />
-        Chat
-      </Button>
+        <motion.div
+          animate={{
+            width: isOpen && !isPanelExpanded ? "calc(100% - 400px)" : "100%",
+          }}
+          className="min-h-svh"
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        >
+          {children}
+        </motion.div>
+      </ChatIAContext.Provider>
 
       <AnimatePresence>
         {isOpen && (
@@ -619,7 +682,8 @@ export function ChatIA({
                       resolvedLogoIa ? (
                         <Image
                           alt=""
-                          className="size-7 object-contain"
+                          className="size-7 select-none object-contain"
+                          draggable={false}
                           height={28}
                           src={resolvedLogoIa}
                           unoptimized={typeof resolvedLogoIa === "string"}
@@ -805,7 +869,8 @@ export function ChatIA({
                           {resolvedLogoIa ? (
                             <Image
                               alt={`Logótipo de ${name}`}
-                              className="mx-auto mb-3 object-contain"
+                              className="mx-auto mb-3 select-none object-contain"
+                              draggable={false}
                               height={logoIaSize}
                               src={resolvedLogoIa}
                               unoptimized={typeof resolvedLogoIa === "string"}
@@ -897,6 +962,20 @@ export function ChatIA({
                             </div>
                           </li>
                         ))}
+                        {isActiveConversationLoading ? (
+                          <li
+                            className="flex justify-start"
+                            key="assistant-loading"
+                          >
+                            <AILoadingState
+                              className={cn(
+                                "max-w-[85%] justify-start",
+                                isExpanded && "max-w-full"
+                              )}
+                              steps={RESPONSE_LOADING_STEPS}
+                            />
+                          </li>
+                        ) : null}
                       </ol>
                     )}
                     <div ref={messagesEndRef} />

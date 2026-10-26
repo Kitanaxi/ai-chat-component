@@ -38,11 +38,17 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Por agora, manter no Git o componente, a documentação e este ficheiro.
+# Manter no Git o ChatIA, o botão do dashboard, a documentação e este ficheiro.
 /*
 !/.gitignore
 !/README.md
+!/app/
+/app/*
+!/app/dashboard/
+/app/dashboard/*
+!/app/dashboard/page.tsx
 !/components/
 /components/*
 !/components/chat-ia/
 !/components/chat-ia/**
+!/components/site-header.tsx

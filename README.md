@@ -1,3 +1,5 @@
+<img src="./components/chat-ia/imgWebChat.png" width="100%" />
+
 ## Prompt para copiar e colar no teu agente de programação
 
 Copia o bloco abaixo e cola-o no teu agente de programação com o projeto aberto:
@@ -8,7 +10,7 @@ Analyze this project and make the ChatIA component ready to use. Use this README
 1. Before editing files, identify the framework, React version, Tailwind CSS setup, shadcn/ui configuration, aliases, existing components, and ThemeProvider. Preserve local changes and avoid refactoring unrelated parts of the application.
 2. Configure the @react-bits and @kokonutui registries in components.json as described in this README, preserving the existing settings.
 3. Install only missing pieces: DotGrid with `npx shadcn@latest add @react-bits/DotGrid-JS-CSS`, AI Input Selector with `npx shadcn@latest add @kokonutui/ai-prompt`, and the required shadcn button. Do not duplicate existing files or dependencies.
-4. Integrate ChatIA at the appropriate entry point, wrapping the application content and keeping the ThemeProvider above it. Use the example and props in this README as a reference.
+4. Integrate ChatIA at the appropriate entry point, wrapping the application content and keeping the ThemeProvider above it. Place the reusable `ChatIAButton` in the intended header; when a `SiteHeader` exposes a `btns` prop, use `const btn = <ChatIAButton />` and `<SiteHeader btns={btn} />`.
 5. If the project uses Vite, configure the `@` alias and replace the `next/image` import with an image implementation that works in Vite. Do not add Next.js just to resolve that import. If the project uses Next.js, respect its client/server boundaries.
 6. Do not invent a provider, endpoint, credentials, or real responses. Keep demo mode when no service is configured. If an endpoint already exists, connect through the server, protect credentials, and verify how assistant responses appear in the conversation history.
 7. Run checks appropriate for the project, fix issues caused by the integration, and leave unrelated files unchanged.
@@ -119,6 +121,21 @@ export default function RootLayout({
 
 `children` é o conteúdo normal do site. Com `floating={false}`, o chat abre como painel lateral e reduz a largura do conteúdo enquanto está aberto. Com `floating`, abre como painel flutuante sobre a página.
 
+## Botão para abrir o chat
+
+`ChatIAButton` abre o painel e pode ser colocado em qualquer ponto dentro de `ChatIA`. No `SiteHeader`, passa-o pela propriedade `btns`:
+
+```tsx
+import { ChatIAButton } from "@/components/chat-ia/chat-ia";
+import { SiteHeader } from "@/components/site-header";
+
+const btn = <ChatIAButton />;
+
+<SiteHeader btns={btn} />
+```
+
+O botão mostra o ícone de estrelas e o texto `Perguntar à IA`.
+
 ## Propriedades
 
 | Propriedade | Para que serve |
@@ -172,9 +189,7 @@ function ChatLayout({ children }: { children: React.ReactNode }) {
 
 As conversas são guardadas em `localStorage` no navegador, na chave `chat-ia-conversations-v1`. O utilizador pode iniciar, selecionar, limpar e eliminar conversas. Esses dados ficam no navegador atual; o componente não os sincroniza com um servidor.
 
-Sem `onSubmit`, o componente simula uma resposta de teste depois de enviar uma mensagem. Com `onSubmit`, recebe o texto, o nome do modelo e opções, incluindo `signal` para cancelamento. Usa esse callback para chamar uma rota do teu servidor e manter as chaves do fornecedor no servidor, nunca no código do browser.
-
-**Limitação da versão atual:** quando `onSubmit` está definido, o `ChatIA` guarda a mensagem do utilizador, mas não acrescenta automaticamente a resposta devolvida pelo callback ao histórico visível. A resposta automática visível existe apenas no modo de demonstração. A integração com respostas reais requer completar esse comportamento no componente.
+Enquanto aguarda uma resposta, o componente mostra o `AILoadingState`. Sem `onSubmit`, simula uma resposta de teste depois de enviar uma mensagem. Com `onSubmit`, recebe o texto, o nome do modelo e opções, incluindo `signal` para cancelamento. Usa esse callback para chamar uma rota do teu servidor e manter as chaves do fornecedor no servidor, nunca no código do browser. Se o callback devolver uma string, ela é apresentada no histórico como resposta do assistente; converte respostas estruturadas em texto antes de as devolver.
 
 ## Compatibilidade
 
